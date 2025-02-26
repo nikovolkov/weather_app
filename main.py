@@ -1,12 +1,14 @@
 import requests
 import os
 import json
+import csv
+import more_itertools
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 api_key = os.getenv("WEATHER_API_KEY")
-cities_list = [
+city_list = [
     "London",
     "Moscow",
     "Paris",
@@ -28,6 +30,9 @@ class Forecast:
         self.humidity = humidity
         self.wind = wind
         self.description = description
+
+    def __str__(self):
+        return f"{self.date},{self.city},{self.temp},{self.humidity},{self.wind},{self.description}"
 
 
 class CityWeather:
@@ -59,26 +64,45 @@ class CityWeather:
         }
         return coords
 
-    def get_weather_info(self):
+    def get_weather_info(self) -> list:
         coords = self.get_coords()
-        response = requests.get(
-            f"{type(self).endpoint}/data/2.5/forecast?lat={coords['lat']}&lon={coords['lon']}&units=metric&appid={api_key}"
-        )
+        query = f"lat={coords['lat']}&lon={coords['lon']}&units=metric&&appid={api_key}"
+        response = requests.get(f"{type(self).endpoint}/data/2.5/forecast?{query}")
         return response.json()["list"]
 
-    def get_forecast(self):
+    def get_forecast(self) -> list:
         forecast = []
         for item in self.get_weather_info():
             timestamp = item["dt"]
-            date = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            date = datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
             temp = item["main"]["temp"]
             humidity = item["main"]["humidity"]
             wind = item["wind"]["speed"]
             description = item["weather"][0]["description"]
-            forecast.append(Forecast(self.city_name, date, temp, humidity, wind, description))
+            forecast.append(
+                Forecast(self.city_name, date, temp, humidity, wind, description)
+            )
         return forecast
 
 
-london = CityWeather("London")
+class WeeklyForecast:
+    def __init__(self, city_list):
+        self.city_list = city_list
 
-print(london.get_forecast())
+    def generate_forecast(self):
+        weekly_forecast = []
+        for city in self.city_list:
+            forecast = CityWeather(city).get_forecast()
+            weekly_forecast.append(forecast)
+        return weekly_forecast
+
+    def generate_csv(self):
+        lines = list(more_itertools.flatten(self.generate_forecast()))
+        with open("weekly_forecast.csv", "w", newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Date", "City", "Temperature", "Humidity", "Wind", "Description"])
+            for line in lines:
+                writer.writerow([str(line)])
+
+
+f = WeeklyForecast(city_list).generate_csv()
