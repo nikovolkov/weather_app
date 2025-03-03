@@ -1,25 +1,38 @@
-import requests
-import os
-import json
+import argparse
+import boto3
 import csv
+import os
 import more_itertools
+import json
+import requests
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 api_key = os.getenv("WEATHER_API_KEY")
-city_list = [
-    "London",
-    "Moscow",
-    "Paris",
-    "New-York",
-    "Berlin",
-    "Batumi",
-    "Sochi",
-    "Rome",
-    "Helsinki",
-    "Saint-Petersburg",
-]
+default_cities = "London,Moscow,Paris,New-York,Berlin,Batumi,\
+    Sochi,Rome,Helsinki,Saint-Petersburg"
+
+parser = argparse.ArgumentParser(description="pass the list of cities to get forecast")
+parser.add_argument(
+    "-c",
+    "--cities",
+    type=str,
+    default=default_cities,
+    help="enter cities list with comma delimeter",
+)
+parser.add_argument(
+    "-f",
+    "--file",
+    type=str,
+    default="weekly_forecast.csv",
+    help="name of the output file",
+)
+parser.add_argument(
+    "-b", "--bucket", type=str, default=None, help="to upload file specify name of the bucket"
+)
+args = parser.parse_args()
+city_list = args.cities.split(",")
 
 
 class Forecast:
@@ -98,11 +111,21 @@ class WeeklyForecast:
 
     def generate_csv(self):
         lines = list(more_itertools.flatten(self.generate_forecast()))
-        with open("weekly_forecast.csv", "w", newline='') as file:
+        with open(args.file, "w", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(["Date", "City", "Temperature", "Humidity", "Wind", "Description"])
+            writer.writerow(
+                ["Date", "City", "Temperature", "Humidity", "Wind", "Description"]
+            )
             for line in lines:
                 writer.writerow([str(line)])
+    @staticmethod
+    def s3_upload():
+        s3 = boto3.resource("s3").Bucket(args.bucket)
+        s3.upload_file(args.file, f"forecasts/{args.file}")
 
 
-f = WeeklyForecast(city_list).generate_csv()
+if __name__ == "__main__":
+    WeeklyForecast(city_list).generate_csv()
+
+if args.bucket is not None:
+    WeeklyForecast.s3_upload()
