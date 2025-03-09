@@ -1,13 +1,14 @@
 import csv
 import constants
-from weather_model import WeatherData
+from weather_model import WeatherData, WeatherSummary
 from datetime import datetime
 
 
 class CSVExporter:
-    def __init__(self, file_name: str, data: list):
+    def __init__(self, file_name: str, weather_data: list, summary: WeatherSummary):
         self.file_name = file_name
-        self.data = data
+        self.weather_data = weather_data
+        self.summary = summary
 
     @property
     def generate_file_name(self):
@@ -30,7 +31,8 @@ class CSVExporter:
         with open(filename, "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(constants.DEFAULT_CSV_HEADERS)
-            for weather_data in self.data:
+            for weather_data in self.weather_data:
                 for forecast in weather_data:
                     row = self.generate_row(forecast)
                     writer.writerow(row)
+            writer.writerow(self.summary)

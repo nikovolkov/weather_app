@@ -1,5 +1,7 @@
 import argparse
 import constants
+import statistics
+from weather_model import WeatherSummary
 from weather_repository import WeatherRepository
 from concurrent.futures import ThreadPoolExecutor
 from exporter import CSVExporter
@@ -13,6 +15,31 @@ class WeatherService:
         weather_repo = WeatherRepository()
         with ThreadPoolExecutor() as executor:
             return list(executor.map(weather_repo.generate_forecast, self.cities))
+
+    @staticmethod
+    def generate_summary(weather_repo: list):
+        temperatures = []
+        humidities = []
+        winds = []
+
+        for weather_data in weather_repo:
+            for forecast in weather_data:
+                temperatures.append(forecast.main.temp)
+                humidities.append(forecast.main.humidity)
+                winds.append(forecast.wind.speed)
+
+        summary = WeatherSummary(
+            min_temperature=min(temperatures),
+            max_temperature=max(temperatures),
+            avg_temperature=statistics.mean(temperatures),
+            min_humidity=min(humidities),
+            max_humidity=max(humidities),
+            avg_humidity=statistics.mean(humidities),
+            min_wind=min(winds),
+            max_wind=max(winds),
+            avg_wind=statistics.mean(winds),
+        )
+        return summary
 
 
 if __name__ == "__main__":
@@ -42,5 +69,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    data = WeatherService(args.cities.split(",")).generate_bulk_forecast()
-    CSVExporter(args.file, data).write_file()
+    weather_data = WeatherService(args.cities.split(",")).generate_bulk_forecast()
+    summary = WeatherService.generate_summary(weather_data)
+    CSVExporter(args.file, weather_data, summary).write_file()

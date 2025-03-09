@@ -53,3 +53,15 @@ class WeatherData(BaseModel):
     pop: float
     sys: Sys
     dt_txt: str
+
+
+class WeatherSummary(BaseModel):
+    min_temperature: float
+    max_temperature: float
+    avg_temperature: float
+    min_humidity: int
+    max_humidity: int
+    avg_humidity: float
+    min_wind: float
+    max_wind: float
+    avg_wind: float
