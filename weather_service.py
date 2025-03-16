@@ -16,13 +16,32 @@ class WeatherService:
         with ThreadPoolExecutor() as executor:
             return list(executor.map(weather_repo.generate_forecast, self.cities))
 
-    @staticmethod
-    def generate_summary(weather_repo: list):
+
+class ReportConstructor:
+    def __init__(self, raw_data: list):
+        self.raw_data = raw_data
+
+    def generate_data(self) -> list:
+        data = []
+        for weather_data in self.raw_data:
+            for forecast in weather_data:
+                model = [
+                    forecast.city,
+                    forecast.dt.strftime("%Y-%m-%d %H:%M"),
+                    forecast.main.temp,
+                    forecast.main.humidity,
+                    forecast.wind.speed,
+                    forecast.weather[0].main,
+                ]
+                data.append(model)
+        return data
+
+    def generate_summary(self) -> WeatherSummary:
         temperatures = []
         humidities = []
         winds = []
 
-        for weather_data in weather_repo:
+        for weather_data in self.raw_data:
             for forecast in weather_data:
                 temperatures.append(forecast.main.temp)
                 humidities.append(forecast.main.humidity)
@@ -40,6 +59,9 @@ class WeatherService:
             avg_wind=statistics.mean(winds),
         )
         return summary
+
+    def full_weather_report(self) -> list:
+        return self.generate_data() + [self.generate_summary()]
 
 
 if __name__ == "__main__":
@@ -69,6 +91,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    weather_data = WeatherService(args.cities.split(",")).generate_bulk_forecast()
-    summary = WeatherService.generate_summary(weather_data)
-    CSVExporter(args.file, weather_data, summary).write_file()
+    weather_raw_data = WeatherService(args.cities.split(",")).generate_bulk_forecast()
+    weather_data = ReportConstructor(weather_raw_data).full_weather_report()
+    export_file = CSVExporter(args.file)
+    export_file.export("w", weather_data)
