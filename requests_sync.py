@@ -1,4 +1,5 @@
 import requests
+import logging
 
 
 class RequestsSync:
@@ -11,6 +12,7 @@ class RequestsSync:
         url = f"{self.base_url}/{endpoint}"
         try:
             response = requests.request(method=method, url=url, params=params)
+            logging.info(f"successful call: {response.status_code}")
             return response.json()
         except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+            return logging.error(f"failed call: {e}")

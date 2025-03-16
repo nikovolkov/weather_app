@@ -1,5 +1,6 @@
 import csv
 import constants
+import logging
 from datetime import datetime
 
 
@@ -18,3 +19,4 @@ class CSVExporter:
             writer = csv.writer(file)
             writer.writerow(constants.DEFAULT_CSV_HEADERS)
             writer.writerows(data)
+            logging.info(f"Data successfully exported to {filename}")
